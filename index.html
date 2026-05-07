@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GestãoOC — TM Engenharia</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg:#f4f4f0;--surface:#fff;--surface2:#f8f8f5;--border:#e0dfd8;--border2:#c8c7be;
+    --text:#1a1a18;--text2:#5a5a55;--text3:#909088;
+    --accent:#1a6b4a;--accent-light:#e6f4ee;--accent-mid:#2d8f63;
+    --amber:#b36b00;--amber-light:#fff4e0;
+    --red:#c0392b;--red-light:#fdecea;
+    --blue:#1a5296;--blue-light:#e8f0fb;
+    --purple:#5a2d8c;--purple-light:#f0eafb;
+    --radius:8px;--radius-lg:12px;
+    --shadow:0 1px 3px rgba(0,0,0,0.08);--shadow-lg:0 4px 16px rgba(0,0,0,0.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
+  #app{display:flex;min-height:100vh;}
+  #sidebar{width:220px;background:#1a1a18;color:#fff;display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;z-index:100;}
+  #main{margin-left:220px;flex:1;padding:28px 32px;}
+  .sidebar-logo{padding:20px 20px 14px;border-bottom:1px solid rgba(255,255,255,0.08);}
+  .sidebar-logo h1{font-size:15px;font-weight:700;}
+  .sidebar-logo p{font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px;}
+  .sidebar-profile{padding:12px 20px;border-bottom:1px solid rgba(255,255,255,0.08);}
+  .sidebar-profile label{font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:block;}
+  .sidebar-profile select{width:100%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:var(--radius);padding:7px 10px;font-size:12px;cursor:pointer;}
+  .sidebar-profile select option{background:#2a2a28;}
+  .sync-bar{padding:6px 20px;font-size:10px;display:flex;align-items:center;gap:5px;border-bottom:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.45);}
+  .sync-dot{width:6px;height:6px;border-radius:50%;background:#3ecf8e;flex-shrink:0;}
+  .sync-dot.off{background:var(--red);}
+  nav{flex:1;padding:10px 0;}
+  .nav-section{padding:10px 20px 4px;font-size:10px;color:rgba(255,255,255,0.28);text-transform:uppercase;letter-spacing:.5px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;color:rgba(255,255,255,0.6);transition:all .15s;font-size:13px;}
+  .nav-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
+  .nav-item.active{background:var(--accent);color:#fff;}
+  .nav-item .icon{width:18px;text-align:center;font-size:15px;}
+  .nav-badge{margin-left:auto;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:600;}
+  .nav-badge.amber{background:var(--amber);}
+  .sidebar-footer{padding:14px 20px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:rgba(255,255,255,0.22);}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
+  .topbar h2{font-size:22px;font-weight:700;letter-spacing:-.5px;}
+  .topbar p{font-size:13px;color:var(--text2);margin-top:2px;}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--surface);color:var(--text);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;}
+  .btn:hover{background:var(--surface2);}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .btn.primary:hover{background:var(--accent-mid);}
+  .btn.sm{padding:6px 12px;font-size:12px;}
+  .btn.xs{padding:3px 8px;font-size:11px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;box-shadow:var(--shadow);}
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;}
+  .stat-card .label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+  .stat-card .value{font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1;}
+  .stat-card .sub{font-size:12px;color:var(--text2);margin-top:6px;}
+  .stat-card.green{border-left:3px solid var(--accent);}
+  .stat-card.amber{border-left:3px solid var(--amber);}
+  .stat-card.red{border-left:3px solid var(--red);}
+  .stat-card.blue{border-left:3px solid var(--blue);}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;}
+  th{text-align:left;padding:10px 14px;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:13px;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:var(--surface2);}
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+  .badge.green{background:var(--accent-light);color:var(--accent);}
+  .badge.amber{background:var(--amber-light);color:var(--amber);}
+  .badge.red{background:var(--red-light);color:var(--red);}
+  .badge.blue{background:var(--blue-light);color:var(--blue);}
+  .badge.purple{background:var(--purple-light);color:var(--purple);}
+  .badge.gray{background:var(--surface2);color:var(--text2);border:1px solid var(--border);}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .modal{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);width:100%;max-width:640px;max-height:90vh;overflow-y:auto;}
+  .modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .modal-header h3{font-size:17px;font-weight:700;}
+  .modal-body{padding:24px;}
+  .modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+  .close-btn{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3);padding:4px 8px;border-radius:4px;}
+  .close-btn:hover{background:var(--surface2);}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .form-group{display:flex;flex-direction:column;gap:5px;}
+  .form-group.full{grid-column:1/-1;}
+  label{font-size:12px;font-weight:600;color:var(--text2);}
+  input,select,textarea{border:1px solid var(--border2);border-radius:var(--radius);padding:9px 12px;font-size:13px;color:var(--text);background:var(--surface);transition:border-color .15s;width:100%;font-family:inherit;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);}
+  textarea{resize:vertical;min-height:80px;}
+  .timeline{display:flex;align-items:flex-start;margin:16px 0;}
+  .timeline-step{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;}
+  .timeline-step:not(:last-child)::after{content:'';position:absolute;top:14px;left:calc(50% + 14px);right:calc(-50% + 14px);height:2px;background:var(--border);z-index:0;}
+  .timeline-step:not(:last-child).done::after{background:var(--accent);}
+  .step-circle{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid var(--border);background:var(--surface);color:var(--text3);z-index:1;}
+  .step-circle.done{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .step-circle.active{border-color:var(--accent);color:var(--accent);}
+  .step-label{font-size:11px;color:var(--text3);text-align:center;}
+  .step-label.done{color:var(--accent);font-weight:600;}
+  .step-label.active{color:var(--accent);}
+  .filter-bar{display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap;}
+  .tabs{display:flex;gap:2px;border-bottom:2px solid var(--border);margin-bottom:20px;}
+  .tab{padding:10px 16px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;}
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .alert{padding:12px 16px;border-radius:var(--radius);margin-bottom:16px;font-size:13px;display:flex;align-items:flex-start;gap:10px;}
+  .alert.red{background:var(--red-light);color:var(--red);border:1px solid #f5c6c1;}
+  .alert.amber{background:var(--amber-light);color:var(--amber);border:1px solid #ffd591;}
+  .alert.green{background:var(--accent-light);color:var(--accent);border:1px solid #a8dfc4;}
+  .progress-bar{height:6px;border-radius:3px;background:var(--border);overflow:hidden;}
+  .progress-bar-fill{height:100%;border-radius:3px;background:var(--accent);}
+  .empty{text-align:center;padding:48px 24px;color:var(--text3);}
+  .empty .icon{font-size:36px;margin-bottom:12px;}
+  .page{display:none;}
+  .page.active{display:block;}
+  #toast{position:fixed;bottom:24px;right:24px;background:#1a1a18;color:#fff;padding:12px 20px;border-radius:var(--radius);font-size:13px;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(8px);transition:all .25s;z-index:9999;max-width:320px;}
+  #toast.show{opacity:1;transform:translateY(0);}
+  #loading-screen{position:fixed;inset:0;background:#1a1a18;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9998;transition:opacity .4s;}
+  #loading-screen.hide{opacity:0;pointer-events:none;}
+  .loading-logo{font-size:36px;margin-bottom:12px;}
+  .loading-text{color:rgba(255,255,255,0.5);font-size:14px;margin-bottom:24px;}
+  .loading-bar{width:200px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;}
+  .loading-fill{height:100%;background:#3ecf8e;border-radius:2px;animation:ld 1.5s ease-in-out infinite;}
+  @keyframes ld{0%{width:0;margin-left:0}50%{width:60%;margin-left:20%}100%{width:0;margin-left:100%}}
+  ::-webkit-scrollbar{width:5px;height:5px;}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="loading-logo">📋</div>
+  <div class="loading-text">Conectando ao banco de dados...</div>
+  <div class="loading-bar"><div class="loading-fill"></div></div>
+</div>
+
+<div id="app" style="display:none">
+  <div id="sidebar">
+    <div class="sidebar-logo">
+      <h1>📋 GestãoOC</h1>
+      <p>TM Engenharia LTDA</p>
+    </div>
+    <div class="sidebar-profile">
+      <label>Perfil de acesso</label>
+      <select id="profileSelect" onchange="setProfile(this.value)">
+        <option value="gestor">👔 Gestor</option>
+        <option value="compras">🛒 Compras</option>
+        <option value="analista">📝 Analista OC Serviço</option>
+        <option value="almoxarifado">📦 Almoxarifado/Financeiro</option>
+      </select>
+    </div>
+    <div class="sync-bar">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-text">Conectado · tempo real</span>
+    </div>
+    <nav id="sidebar-nav"></nav>
+    <div class="sidebar-footer">
+      <div style="margin-bottom:8px">Dados em tempo real · Supabase</div>
+      <button onclick="openTutorial()" style="width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);border-radius:var(--radius);padding:7px 10px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s" onmouseover="this.style.background='rgba(255,255,255,0.14)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">
+        <span>❓</span> Como usar o sistema
+      </button>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="page-dashboard" class="page active">
+      <div class="topbar">
+        <div><h2>Dashboard</h2><p>Visão geral em tempo real</p></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn sm" onclick="exportDashboardPDF()">📄 Exportar PDF</button>
+          <button class="btn sm" onclick="loadAll()">🔄 Atualizar</button>
+        </div>
+      </div>
+      <div id="dashboard-content"></div>
+    </div>
+    <div id="page-ocs" class="page">
+      <div class="topbar">
+        <div><h2>Ordens de Compra</h2><p id="oc-page-sub"></p></div>
+        <div id="oc-actions"></div>
+      </div>
+      <div id="ocs-content"></div>
+    </div>
+    <div id="page-nfs" class="page">
+      <div class="topbar">
+        <div><h2>Notas Fiscais</h2><p>Vinculação de NF às OCs</p></div>
+        <div id="nf-actions"></div>
+      </div>
+      <div id="nfs-content"></div>
+    </div>
+    <div id="page-lancamento" class="page">
+      <div class="topbar"><div><h2>Fila de Lançamento</h2><p>NFs aguardando lançamento no sistema</p></div></div>
+      <div id="lancamento-content"></div>
+    </div>
+    <div id="page-historico" class="page">
+      <div class="topbar">
+        <div><h2>Histórico</h2><p>Processos concluídos</p></div>
+        <button class="btn sm" onclick="exportHistoricoPDF()">📄 Exportar PDF</button>
+      </div>
+      <div id="historico-content"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-container"></div>
+<div id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://chcjipxiyjgzbppowngd.supabase.co';
+const SUPABASE_KEY='sb_publishable_ADDdQPzgnO-Rb9uB91CNLQ_eDOBihX_';
+const {createClient}=supabase;
+const sb=createClient(SUPABASE_URL,SUPABASE_KEY);
+
+let ocs=[],nfs=[],currentProfile='gestor',currentPage='dashboard',rtChannel=null;
+
+const PROFILES={
+  gestor:{label:'Gestor',pages:['dashboard','ocs','nfs','lancamento','historico'],canCreateOC:false,canCreateNF:false,canLancar:false},
+  compras:{label:'Compras',pages:['ocs','nfs','dashboard','historico'],canCreateOC:true,tipoOC:'material',canCreateNF:'propria',canLancar:false},
+  analista:{label:'Analista OC Serviço',pages:['ocs','nfs','dashboard','historico'],canCreateOC:true,tipoOC:'servico',canCreateNF:'propria',canLancar:false},
+  almoxarifado:{label:'Almoxarifado/Fin.',pages:['nfs','lancamento','dashboard','historico'],canCreateOC:false,canCreateNF:true,canLancar:true},
+};
+
+async function loadAll(){
+  try{
+    const[{data:d1,error:e1},{data:d2,error:e2}]=await Promise.all([
+      sb.from('ocs').select('*').order('created_at',{ascending:false}),
+      sb.from('nfs').select('*').order('created_at',{ascending:false}),
+    ]);
+    if(e1||e2)throw e1||e2;
+    ocs=d1||[];nfs=d2||[];
+    setSyncStatus(true);renderPage(currentPage);buildNav();
+  }catch(e){setSyncStatus(false);console.error(e);}
+}
+
+async function insertOC(data){const{error}=await sb.from('ocs').insert(data);if(error)throw error;await loadAll();}
+async function updateOC(id,data){const{error}=await sb.from('ocs').update(data).eq('id',id);if(error)throw error;await loadAll();}
+async function insertNF(data){
+  // Tenta inserir com todos os campos; se falhar por colunas ausentes, tenta sem os campos de arquivo
+  const{error}=await sb.from('nfs').insert(data);
+  if(error){
+    const missingCol = error.message&&error.message.includes('schema cache');
+    if(missingCol){
+      // Remove campos de arquivo e tenta novamente
+      const{arquivo_nf,arquivos_boletos,...dataBasica}=data;
+      const{error:e2}=await sb.from('nfs').insert(dataBasica);
+      if(e2)throw e2;
+      window._colunasArquivoAusentes=true;
+      mostrarAvisoColunas();
+    } else {
+      throw error;
+    }
+  } else {
+    window._colunasArquivoAusentes=false;
+  }
+  await loadAll();
+}
+async function updateNF(id,data){const{error}=await sb.from('nfs').update(data).eq('id',id);if(error)throw error;await loadAll();}
+
+function mostrarAvisoColunas(){
+  // Evita mostrar múltiplas vezes
+  if(document.getElementById('aviso-colunas'))return;
+  const div=document.createElement('div');
+  div.id='aviso-colunas';
+  div.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#b36b00;color:#fff;padding:12px 20px;font-size:13px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.2)';
+  div.innerHTML=`
+    <span style="font-size:16px">⚠️</span>
+    <div style="flex:1">
+      <strong>Colunas de arquivo ausentes no banco.</strong>
+      Os PDFs foram enviados ao Storage, mas as referências não puderam ser salvas na tabela <code style="background:rgba(0,0,0,0.2);padding:1px 5px;border-radius:3px">nfs</code>.
+      Execute no <strong>SQL Editor</strong> do Supabase:
+      <code style="background:rgba(0,0,0,0.25);padding:2px 8px;border-radius:3px;margin-left:6px;user-select:all">
+        ALTER TABLE nfs ADD COLUMN IF NOT EXISTS arquivo_nf TEXT; ALTER TABLE nfs ADD COLUMN IF NOT EXISTS arquivos_boletos JSONB DEFAULT '[]';
+      </code>
+    </div>
+    <button onclick="this.parentElement.remove()" style="background:rgba(0,0,0,0.2);border:none;color:#fff;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:13px">✕</button>
+  `;
+  document.body.prepend(div);
+}
+
+function setSyncStatus(on){
+  document.getElementById('sync-dot').className='sync-dot'+(on?'':' off');
+  document.getElementById('sync-text').textContent=on?'Conectado · tempo real':'Sem conexão';
+}
+
+function setupRealtime(){
+  if(rtChannel)sb.removeChannel(rtChannel);
+  rtChannel=sb.channel('oc-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'ocs'},()=>loadAll())
+    .on('postgres_changes',{event:'*',schema:'public',table:'nfs'},()=>loadAll())
+    .subscribe();
+}
+
+function setProfile(p){
+  currentProfile=p;
+  if(!PROFILES[p].pages.includes(currentPage))currentPage=PROFILES[p].pages[0];
+  buildNav();navigateTo(currentPage);
+}
+
+function buildNav(){
+  const prof=PROFILES[currentProfile];
+  const NAV=[
+    {id:'dashboard',icon:'📊',label:'Dashboard',section:'Visão Geral',badge:null},
+    {id:'ocs',icon:'📋',label:'Ordens de Compra',section:'Operações',badge:'oc'},
+    {id:'nfs',icon:'🧾',label:'Notas Fiscais',section:null,badge:null},
+    {id:'lancamento',icon:'⚡',label:'Fila Lançamento',section:null,badge:'nf'},
+    {id:'historico',icon:'📁',label:'Histórico',section:null,badge:null},
+  ];
+  let html='',lastSec='';
+  for(const item of NAV){
+    if(!prof.pages.includes(item.id))continue;
+    if(item.section&&item.section!==lastSec){html+=`<div class="nav-section">${item.section}</div>`;lastSec=item.section;}
+    let badge=0;
+    if(item.badge==='oc')badge=ocs.filter(o=>['aberta','aguardando_nf'].includes(o.status)).length;
+    if(item.badge==='nf')badge=nfs.filter(n=>n.status==='aguardando_lancamento').length;
+    html+=`<div class="nav-item${currentPage===item.id?' active':''}" onclick="navigateTo('${item.id}')">
+      <span class="icon">${item.icon}</span><span>${item.label}</span>
+      ${badge>0?`<span class="nav-badge${item.badge==='nf'?' amber':''}">${badge}</span>`:''}
+    </div>`;
+  }
+  document.getElementById('sidebar-nav').innerHTML=html;
+}
+
+function navigateTo(page){
+  currentPage=page;buildNav();
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  renderPage(page);
+}
+
+function renderPage(p){({dashboard:renderDashboard,ocs:renderOCs,nfs:renderNFs,lancamento:renderLancamento,historico:renderHistorico})[p]?.();}
+
+function renderDashboard(){
+  const total=ocs.length,aguNF=ocs.filter(o=>o.status==='aguardando_nf').length,
+    abertas=ocs.filter(o=>o.status==='aberta').length,
+    nfRec=ocs.filter(o=>o.status==='nf_recebida').length,
+    conc=ocs.filter(o=>o.status==='concluido').length,
+    filaLanc=nfs.filter(n=>n.status==='aguardando_lancamento').length,
+    semAtr=Date.now()-7*86400000,
+    nfsAtr=nfs.filter(n=>n.status==='aguardando_lancamento'&&new Date(n.data_recebimento)<new Date(semAtr)),
+    ocsSNF=ocs.filter(o=>o.status==='aguardando_nf'&&Math.floor((Date.now()-new Date(o.data_criacao))/86400000)>10),
+    valTotal=ocs.reduce((s,o)=>s+Number(o.valor||0),0),
+    valPend=ocs.filter(o=>o.status!=='concluido').reduce((s,o)=>s+Number(o.valor||0),0);
+
+  let alerts='';
+  if(nfsAtr.length)alerts+=`<div class="alert red">⚠️ <div><strong>${nfsAtr.length} NF(s) com mais de 7 dias sem lançamento!</strong><br>${nfsAtr.map(n=>`NF nº ${n.numero}`).join(' · ')}</div></div>`;
+  if(ocsSNF.length)alerts+=`<div class="alert amber">⏳ <div><strong>${ocsSNF.length} OC(s) há mais de 10 dias aguardando NF</strong><br>${ocsSNF.map(o=>o.id).join(' · ')}</div></div>`;
+
+  document.getElementById('dashboard-content').innerHTML=`
+  ${alerts}
+  <div class="stats-grid">
+    <div class="stat-card blue"><div class="label">Total OCs</div><div class="value" style="color:var(--blue)">${total}</div><div class="sub">R$ ${fmt(valTotal)}</div></div>
+    <div class="stat-card amber"><div class="label">Aguardando NF</div><div class="value" style="color:var(--amber)">${aguNF+abertas}</div><div class="sub">${abertas} ainda abertas</div></div>
+    <div class="stat-card red"><div class="label">Fila Lançamento</div><div class="value" style="color:var(--red)">${filaLanc}</div><div class="sub">${nfsAtr.length} NF(s) atrasadas</div></div>
+    <div class="stat-card green"><div class="label">Concluídas</div><div class="value" style="color:var(--accent)">${conc}</div><div class="sub">R$ ${fmt(valTotal-valPend)}</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="card">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:14px">Funil por Status</h3>
+      ${[['OC Abertas',abertas,'var(--blue)'],['Aguard. NF',aguNF,'var(--amber)'],['NF Recebida',nfRec,'var(--purple)'],['Fila Lançam.',filaLanc,'var(--red)'],['Concluídas',conc,'var(--accent)']].map(([l,c,col])=>`
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:12px;color:var(--text2)">${l}</span><span style="font-size:12px;font-weight:600">${c}</span></div>
+        <div class="progress-bar"><div class="progress-bar-fill" style="width:${total?Math.round(c/total*100):0}%;background:${col}"></div></div>
+      </div>`).join('')}
+    </div>
+    <div class="card">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:14px">Por Tipo</h3>
+      <div style="display:flex;gap:12px;margin-bottom:14px">
+        <div style="flex:1;text-align:center;padding:14px;background:var(--blue-light);border-radius:var(--radius)">
+          <div style="font-size:26px;font-weight:700;color:var(--blue)">${ocs.filter(o=>o.tipo==='material').length}</div>
+          <div style="font-size:12px;color:var(--text2)">Material</div>
+          <div style="font-size:11px;color:var(--text3)">R$ ${fmt(ocs.filter(o=>o.tipo==='material').reduce((s,o)=>s+Number(o.valor||0),0))}</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:14px;background:var(--accent-light);border-radius:var(--radius)">
+          <div style="font-size:26px;font-weight:700;color:var(--accent)">${ocs.filter(o=>o.tipo==='servico').length}</div>
+          <div style="font-size:12px;color:var(--text2)">Serviço</div>
+          <div style="font-size:11px;color:var(--text3)">R$ ${fmt(ocs.filter(o=>o.tipo==='servico').reduce((s,o)=>s+Number(o.valor||0),0))}</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text3);text-align:center">Pendente: <strong style="color:var(--text)">R$ ${fmt(valPend)}</strong></div>
+    </div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border)"><strong style="font-size:14px">OCs Recentes</strong></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>OC</th><th>Fornecedor</th><th>Valor</th><th>Status</th><th>Criação</th><th></th></tr></thead>
+      <tbody>${ocs.slice(0,6).map(o=>`<tr>
+        <td><strong style="color:var(--blue);cursor:pointer" onclick="openDetalhesOC('${o.id}')">${o.id}</strong></td>
+        <td>${o.fornecedor||'-'}</td><td>R$ ${fmt(o.valor)}</td><td>${statusBadge(o.status)}</td>
+        <td style="font-size:12px;color:var(--text3)">${o.data_criacao||'-'}</td>
+        <td><button class="btn xs" onclick="gerarPDFOC('${o.id}')">📄</button></td>
+      </tr>`).join('')||`<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma OC cadastrada ainda</td></tr>`}
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
+// ---- PERMISSÃO DE ANEXAR NF ----
+function podeAnexarNF(prof, oc){
+  if(!oc||oc.status!=="aguardando_nf")return false;
+  if(prof.canCreateNF===true)return true;
+  if(prof.canCreateNF==="propria")return oc.criado_por===currentProfile;
+  return false;
+}
+
+// ---- SEMÁFORO DE RISCO ----
+function diasDesde(dateStr){
+  if(!dateStr)return 0;
+  return Math.floor((Date.now()-new Date(dateStr).getTime())/86400000);
+}
+function riscoNF(dias){
+  if(dias>=7)return{cor:'var(--red)',bg:'var(--red-light)',cls:'red',icon:'🔴',label:'Crítico',texto:`Atrasada há ${dias}d`};
+  if(dias>=4)return{cor:'var(--amber)',bg:'var(--amber-light)',cls:'amber',icon:'🟡',label:'Atenção',texto:`${dias}d sem lançar`};
+  return{cor:'var(--accent)',bg:'var(--accent-light)',cls:'green',icon:'🟢',label:'OK',texto:`${dias}d`};
+}
+function riscoOC(dias){
+  if(dias>=7)return{cor:'var(--red)',bg:'var(--red-light)',cls:'red',icon:'🔴',label:'Crítico',texto:`Sem NF há ${dias}d`};
+  if(dias>=4)return{cor:'var(--amber)',bg:'var(--amber-light)',cls:'amber',icon:'🟡',label:'Atenção',texto:`${dias}d sem NF`};
+  return{cor:'var(--accent)',bg:'var(--accent-light)',cls:'green',icon:'🟢',label:'OK',texto:`${dias}d`};
+}
+function semaforo(risco){
+  return`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;background:${risco.bg};color:${risco.cor};white-space:nowrap">${risco.icon} ${risco.texto}</span>`;
+}
+function painelRisco(){
+  const criticas=nfs.filter(n=>n.status==='aguardando_lancamento'&&diasDesde(n.data_recebimento)>=7);
+  const atencaoNF=nfs.filter(n=>n.status==='aguardando_lancamento'&&diasDesde(n.data_recebimento)>=4&&diasDesde(n.data_recebimento)<7);
+  const criticasOC=ocs.filter(o=>o.status==='aguardando_nf'&&diasDesde(o.data_criacao)>=7);
+  const atencaoOC=ocs.filter(o=>o.status==='aguardando_nf'&&diasDesde(o.data_criacao)>=4&&diasDesde(o.data_criacao)<7);
+  const total=criticas.length+atencaoNF.length+criticasOC.length+atencaoOC.length;
+  if(!total)return`<div class="alert green" style="margin-bottom:16px">🟢 Tudo sob controle — nenhum item em risco no momento.</div>`;
+  return`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:20px;box-shadow:var(--shadow)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700">⚠️ Painel de Risco</div>
+      <span style="font-size:12px;color:var(--text3)">${total} item(s) requerem atenção</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">
+      ${criticas.length?`<div style="background:var(--red-light);border:1px solid #f5c6c1;border-radius:var(--radius);padding:10px 14px">
+        <div style="font-size:11px;color:var(--red);font-weight:700;margin-bottom:4px">🔴 NFs CRÍTICAS</div>
+        <div style="font-size:22px;font-weight:700;color:var(--red)">${criticas.length}</div>
+        <div style="font-size:11px;color:var(--red)">+7 dias sem lançar</div>
+      </div>`:''}
+      ${atencaoNF.length?`<div style="background:var(--amber-light);border:1px solid #ffd591;border-radius:var(--radius);padding:10px 14px">
+        <div style="font-size:11px;color:var(--amber);font-weight:700;margin-bottom:4px">🟡 NFs EM ATENÇÃO</div>
+        <div style="font-size:22px;font-weight:700;color:var(--amber)">${atencaoNF.length}</div>
+        <div style="font-size:11px;color:var(--amber)">4-6 dias sem lançar</div>
+      </div>`:''}
+      ${criticasOC.length?`<div style="background:var(--red-light);border:1px solid #f5c6c1;border-radius:var(--radius);padding:10px 14px">
+        <div style="font-size:11px;color:var(--red);font-weight:700;margin-bottom:4px">🔴 OCs CRÍTICAS</div>
+        <div style="font-size:22px;font-weight:700;color:var(--red)">${criticasOC.length}</div>
+        <div style="font-size:11px;color:var(--red)">+7 dias sem NF</div>
+      </div>`:''}
+      ${atencaoOC.length?`<div style="background:var(--amber-light);border:1px solid #ffd591;border-radius:var(--radius);padding:10px 14px">
+        <div style="font-size:11px;color:var(--amber);font-weight:700;margin-bottom:4px">🟡 OCs EM ATENÇÃO</div>
+        <div style="font-size:22px;font-weight:700;color:var(--amber)">${atencaoOC.length}</div>
+        <div style="font-size:11px;color:var(--amber)">4-6 dias sem NF</div>
+      </div>`:''}
+    </div>
+    ${criticas.length?`<div style="margin-top:10px;font-size:12px;color:var(--red);font-weight:600">NFs críticas: ${criticas.map(n=>`NF ${n.numero} (${diasDesde(n.data_recebimento)}d)`).join(' · ')}</div>`:''}
+  </div>`;
+}
+
+function renderOCs(){
+  const prof=PROFILES[currentProfile];
+  document.getElementById('oc-page-sub').textContent=prof.canCreateOC?`OCs de ${prof.tipoOC==='material'?'material':'serviço'}`:'Todas as OCs';
+  document.getElementById('oc-actions').innerHTML=prof.canCreateOC?`<button class="btn primary" onclick="openModalNovaOC()">+ Nova OC</button>`:'';
+  const tab=window._ocTab||'ativas';
+  let lista=[...ocs];
+  if(currentProfile==='compras')lista=lista.filter(o=>o.tipo==='material'||o.criado_por==='compras');
+  if(currentProfile==='analista')lista=lista.filter(o=>o.tipo==='servico'||o.criado_por==='analista');
+  // Ordena: pendentes mais antigas primeiro, depois por data de criação
+  lista.sort((a,b)=>{
+    const prioA=a.status!=='concluido'?0:1;
+    const prioB=b.status!=='concluido'?0:1;
+    if(prioA!==prioB)return prioA-prioB;
+    return new Date(a.data_criacao)-new Date(b.data_criacao);
+  });
+  const ativas=lista.filter(o=>o.status!=='concluido');
+  document.getElementById('ocs-content').innerHTML=`
+  ${painelRisco()}
+  <div class="tabs">
+    <div class="tab${tab==='ativas'?' active':''}" onclick="window._ocTab='ativas';renderOCs()">Em andamento (${ativas.length})</div>
+    <div class="tab${tab==='todas'?' active':''}" onclick="window._ocTab='todas';renderOCs()">Todas (${lista.length})</div>
+  </div>
+  <div class="filter-bar">
+    <input type="text" id="oc-search" placeholder="🔍 Buscar..." oninput="filterOCs()" style="max-width:240px">
+    <select id="oc-status" onchange="filterOCs()">
+      <option value="">Todos os status</option>
+      <option value="aberta">Aberta</option>
+      <option value="aguardando_nf">Aguardando NF</option>
+      <option value="nf_recebida">NF Recebida</option>
+      <option value="concluido">Concluído</option>
+    </select>
+  </div>
+  <div style="font-size:11px;color:var(--text3);margin-bottom:8px">🟢 OK &nbsp;·&nbsp; 🟡 Atenção (4+ dias) &nbsp;·&nbsp; 🔴 Crítico (7+ dias) &nbsp;·&nbsp; Ordenado do mais antigo ao mais novo</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="table-wrap"><table>
+      <thead><tr><th>OC</th><th>Tipo</th><th>Fornecedor</th><th>Descrição</th><th>Valor</th><th>Status</th><th>Risco</th><th>Ações</th></tr></thead>
+      <tbody id="oc-tbody">${ocRows(tab==='ativas'?ativas:lista)}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function ocRows(lista){
+  if(!lista.length)return`<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text3)">Nenhuma OC encontrada</td></tr>`;
+  return lista.map(o=>{
+    const prof=PROFILES[currentProfile];
+    const dias=diasDesde(o.data_criacao);
+    const risco=(o.status==='aguardando_nf'||o.status==='aberta')?riscoOC(dias):null;
+    const rowBg=risco?.cls==='red'?'background:#fff8f8':risco?.cls==='amber'?'background:#fffbf0':'';
+    return`<tr style="${rowBg}">
+      <td><strong style="cursor:pointer;color:var(--blue)" onclick="openDetalhesOC('${o.id}')">${o.id}</strong></td>
+      <td><span class="badge ${o.tipo==='material'?'blue':'green'}">${o.tipo==='material'?'📦 Mat':'🔧 Srv'}</span></td>
+      <td>${o.fornecedor||'-'}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.descricao||'-'}</td>
+      <td style="font-weight:600">R$ ${fmt(o.valor)}</td>
+      <td>${statusBadge(o.status)}</td>
+      <td>${risco?semaforo(risco):`<span style="font-size:11px;color:var(--text3)">—</span>`}</td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn xs" onclick="openDetalhesOC('${o.id}')">👁</button>
+        <button class="btn xs" onclick="gerarPDFOC('${o.id}')">📄</button>
+        ${podeAnexarNF(prof,o)?`<button class="btn xs primary" onclick="openModalNF('${o.id}')">+NF</button>`:''}
+        ${prof.canLancar&&o.status==='nf_recebida'?`<button class="btn xs" style="background:var(--accent-light);color:var(--accent);border-color:var(--accent)" onclick="openConfirmarLancamento('${o.nf_vinculada}')">✓</button>`:''}
+        ${(prof.canCreateOC||currentProfile==='gestor')&&o.status==='aguardando_nf'?`<button class="btn xs" style="background:var(--red-light);color:var(--red);border-color:var(--red)" title="Excluir OC" onclick="confirmarExcluirOC('${o.id}')">🗑</button>`:''}
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterOCs(){
+  const search=(document.getElementById('oc-search')?.value||'').toLowerCase();
+  const status=document.getElementById('oc-status')?.value||'';
+  const tab=window._ocTab||'ativas';
+  let lista=[...ocs];
+  if(currentProfile==='compras')lista=lista.filter(o=>o.tipo==='material'||o.criado_por==='compras');
+  if(currentProfile==='analista')lista=lista.filter(o=>o.tipo==='servico'||o.criado_por==='analista');
+  lista.sort((a,b)=>new Date(a.data_criacao)-new Date(b.data_criacao));
+  if(tab==='ativas')lista=lista.filter(o=>o.status!=='concluido');
+  if(search)lista=lista.filter(o=>(o.fornecedor||'').toLowerCase().includes(search)||(o.descricao||'').toLowerCase().includes(search)||o.id.toLowerCase().includes(search));
+  if(status)lista=lista.filter(o=>o.status===status);
+  document.getElementById('oc-tbody').innerHTML=ocRows(lista);
+}
+
+function renderNFs(){
+  const prof=PROFILES[currentProfile];
+  const podeCriarNF=prof.canCreateNF===true||prof.canCreateNF==='propria';
+  document.getElementById('nf-actions').innerHTML=podeCriarNF?'<button class="btn primary" onclick="openModalNF(null)">+ Vincular NF</button>':'';
+  // Ordena mais antigas primeiro
+  const ordenadas=[...nfs].sort((a,b)=>new Date(a.data_recebimento)-new Date(b.data_recebimento));
+  const criticas=ordenadas.filter(n=>n.status==='aguardando_lancamento'&&diasDesde(n.data_recebimento)>=7);
+  const atencao=ordenadas.filter(n=>n.status==='aguardando_lancamento'&&diasDesde(n.data_recebimento)>=4&&diasDesde(n.data_recebimento)<7);
+  document.getElementById('nfs-content').innerHTML=`
+  ${criticas.length?`<div class="alert red">🔴 <div><strong>${criticas.length} NF(s) CRÍTICAS — mais de 7 dias sem lançamento!</strong><br>${criticas.map(n=>`NF ${n.numero} (${diasDesde(n.data_recebimento)}d)`).join(' · ')}</div></div>`:''}
+  ${atencao.length?`<div class="alert amber">🟡 <div><strong>${atencao.length} NF(s) em atenção — entre 4 e 7 dias</strong><br>${atencao.map(n=>`NF ${n.numero} (${diasDesde(n.data_recebimento)}d)`).join(' · ')}</div></div>`:''}
+  <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Ordenado da mais antiga para a mais nova</div>
+  <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Nº NF</th><th>Emitente</th><th>Valor</th><th>OC</th><th>Recebimento</th><th>Risco</th><th>Status</th><th>Arquivos / Ações</th></tr></thead>
+    <tbody>${ordenadas.length?ordenadas.map((n,i)=>{
+      const dias=diasDesde(n.data_recebimento);
+      const risco=n.status==='aguardando_lancamento'?riscoNF(dias):null;
+      const rowBg=risco?.cls==='red'?'background:#fff8f8':risco?.cls==='amber'?'background:#fffbf0':'';
+      return`<tr style="${rowBg}">
+        <td style="font-size:12px;color:var(--text3);font-weight:700">${i+1}º</td>
+        <td><strong>${n.numero}</strong></td>
+        <td>${n.emitente||'-'}</td>
+        <td style="font-weight:600">R$ ${fmt(n.valor)}</td>
+        <td><span style="color:var(--blue);cursor:pointer;font-weight:500" onclick="openDetalhesOC('${n.oc_vinculada}')">${n.oc_vinculada}</span></td>
+        <td style="font-size:12px;color:var(--text2)">${n.data_recebimento||'-'}</td>
+        <td>${risco?semaforo(risco):`<span style="font-size:11px;color:var(--text3)">—</span>`}</td>
+        <td>${nfStatusBadge(n.status)}</td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+            ${n.arquivo_nf
+              ?`<button class="btn xs" style="background:var(--blue-light);color:var(--blue);border-color:var(--blue)" title="Baixar PDF da Nota Fiscal" onclick="baixarArquivo('${n.arquivo_nf}','NF_${n.numero}.pdf')">📄 NF</button>`
+              :`<span style="font-size:11px;color:var(--text3)" title="PDF não disponível">📄 —</span>`}
+            ${(n.arquivos_boletos&&n.arquivos_boletos.length)
+              ? n.arquivos_boletos.map((b,i)=>`<button class="btn xs" style="background:var(--amber-light);color:var(--amber);border-color:var(--amber)" title="Baixar Boleto ${i+1}" onclick="baixarArquivo('${b}','Boleto_${i+1}_NF${n.numero}.pdf')">🧾 ${n.arquivos_boletos.length>1?`B${i+1}`:'Boleto'}</button>`).join('')
+              :`<span style="font-size:11px;color:var(--text3)" title="Boleto não disponível">🧾 —</span>`}
+            ${prof.canLancar&&n.status==='aguardando_lancamento'?`<button class="btn xs" style="background:var(--accent-light);color:var(--accent);border-color:var(--accent)" onclick="openConfirmarLancamento('${n.id}')">✓ Lançar</button>`:''}
+          </div>
+        </td>
+      </tr>`;
+    }).join(''):`<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text3)">Nenhuma NF cadastrada</td></tr>`}
+    </tbody>
+  </table></div></div>`;
+}
+
+function renderLancamento(){
+  // Ordena: mais antigas primeiro (críticas no topo)
+  const fila=[...nfs].filter(n=>n.status==='aguardando_lancamento')
+    .sort((a,b)=>new Date(a.data_recebimento)-new Date(b.data_recebimento));
+  const criticas=fila.filter(n=>diasDesde(n.data_recebimento)>=7);
+  const atencao=fila.filter(n=>diasDesde(n.data_recebimento)>=4&&diasDesde(n.data_recebimento)<7);
+  const ok=fila.filter(n=>diasDesde(n.data_recebimento)<4);
+  const resumo=fila.length?`<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    ${criticas.length?`<div style="background:var(--red-light);border:1px solid #f5c6c1;border-radius:var(--radius);padding:8px 16px;font-size:13px;font-weight:700;color:var(--red)">🔴 ${criticas.length} Crítica${criticas.length>1?'s':''}</div>`:''}
+    ${atencao.length?`<div style="background:var(--amber-light);border:1px solid #ffd591;border-radius:var(--radius);padding:8px 16px;font-size:13px;font-weight:700;color:var(--amber)">🟡 ${atencao.length} Atenção</div>`:''}
+    ${ok.length?`<div style="background:var(--accent-light);border:1px solid #a8dfc4;border-radius:var(--radius);padding:8px 16px;font-size:13px;font-weight:700;color:var(--accent)">🟢 ${ok.length} OK</div>`:''}
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 16px;font-size:13px;color:var(--text2)">Total: ${fila.length} NF(s)</div>
+  </div>`:'';
+  document.getElementById('lancamento-content').innerHTML=`
+  ${!fila.length?`<div class="alert green">✅ Fila vazia! Todas as NFs foram processadas.</div>`:''}
+  ${resumo}
+  <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Ordenado da mais antiga para a mais nova — lance sempre de cima pra baixo</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
+  ${!fila.length?`<div class="card"><div class="empty"><div class="icon">🎉</div><p>Nenhuma NF aguardando</p></div></div>`:
+  fila.map((n,idx)=>{
+    const oc=ocs.find(o=>o.id===n.oc_vinculada);
+    const dias=diasDesde(n.data_recebimento);
+    const risco=riscoNF(dias);
+    return`<div class="card" style="border-left:4px solid ${risco.cor};${risco.cls==='red'?'background:#fff8f8':risco.cls==='amber'?'background:#fffbf0':''}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:10px;color:var(--text3);font-weight:700;letter-spacing:.5px;margin-bottom:3px">${idx+1}º NA FILA</div>
+          <div style="font-weight:700;font-size:16px">NF nº ${n.numero}</div>
+          <div style="font-size:12px;color:var(--text2)">${n.emitente||'-'}</div>
+        </div>
+        ${semaforo(risco)}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div><div style="font-size:11px;color:var(--text3)">Valor</div><div style="font-weight:700">R$ ${fmt(n.valor)}</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">OC</div><div style="font-weight:600;color:var(--blue)">${n.oc_vinculada}</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">Recebida em</div><div style="font-size:12px">${n.data_recebimento||'-'}</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">Fornecedor</div><div style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${oc?.fornecedor||'-'}</div></div>
+      </div>
+      ${oc?`<div style="background:rgba(0,0,0,0.04);border-radius:var(--radius);padding:7px 10px;font-size:12px;color:var(--text2);margin-bottom:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${oc.descricao||''}</div>`:''}
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        ${n.arquivo_nf
+          ?`<button class="btn sm" style="flex:1;background:var(--blue-light);color:var(--blue);border-color:var(--blue);justify-content:center" onclick="baixarArquivo('${n.arquivo_nf}','NF_${n.numero}.pdf')">📄 Baixar NF</button>`
+          :`<div style="flex:1;text-align:center;font-size:11px;color:var(--text3);padding:6px;background:var(--surface2);border-radius:var(--radius);border:1px dashed var(--border2)">📄 PDF não disponível</div>`}
+        ${(n.arquivos_boletos&&n.arquivos_boletos.length)
+          ? n.arquivos_boletos.map((b,i)=>`<button class="btn sm" style="flex:1;background:var(--amber-light);color:var(--amber);border-color:var(--amber);justify-content:center" onclick="baixarArquivo('${b}','Boleto_${i+1}_NF${n.numero}.pdf')">🧾 ${n.arquivos_boletos.length>1?`Boleto ${i+1}`:'Baixar Boleto'}</button>`).join('')
+          :`<div style="flex:1;text-align:center;font-size:11px;color:var(--text3);padding:6px;background:var(--surface2);border-radius:var(--radius);border:1px dashed var(--border2)">🧾 Boleto não disponível</div>`}
+      </div>
+      ${PROFILES[currentProfile].canLancar
+        ?`<button class="btn primary" style="width:100%" onclick="openConfirmarLancamento('${n.id}')">✓ Confirmar Lançamento</button>`
+        :`<div style="font-size:12px;color:var(--text3);text-align:center;padding:4px">Aguardando almoxarifado/financeiro</div>`}
+    </div>`;
+  }).join('')}
+  </div>`;
+}
+
+function renderHistorico(){
+  const lista=ocs.filter(o=>o.status==='concluido');
+  document.getElementById('historico-content').innerHTML=`
+  <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table>
+    <thead><tr><th>OC</th><th>Tipo</th><th>Fornecedor</th><th>Descrição</th><th>Valor</th><th>NF</th><th>Lançado em</th><th>Por</th><th></th></tr></thead>
+    <tbody>${lista.length?lista.map(o=>{
+      const nf=o.nf_vinculada?nfs.find(n=>n.id===o.nf_vinculada):null;
+      return`<tr>
+        <td><strong>${o.id}</strong></td>
+        <td><span class="badge ${o.tipo==='material'?'blue':'green'}">${o.tipo==='material'?'Material':'Serviço'}</span></td>
+        <td>${o.fornecedor||'-'}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.descricao||'-'}</td>
+        <td>R$ ${fmt(o.valor)}</td>
+        <td><span class="badge gray">${nf?`NF ${nf.numero}`:'-'}</span></td>
+        <td style="font-size:12px;color:var(--text2)">${o.data_lancamento||'-'}</td>
+        <td style="font-size:12px;color:var(--text2)">${nf?.lancado_por||'-'}</td>
+        <td><button class="btn xs" onclick="gerarPDFOC('${o.id}')">📄</button></td>
+      </tr>`;
+    }).join(''):`<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text3)">Nenhum processo concluído</td></tr>`}
+    </tbody>
+  </table></div></div>`;
+}
+
+function openModal(html){document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="cmo(event)">${html}</div>`;}
+function closeModal(){document.getElementById('modal-container').innerHTML='';}
+function cmo(e){if(e.target.classList.contains('modal-overlay'))closeModal();}
+
+function openModalNovaOC(){
+  const ano=new Date().getFullYear();
+  openModal(`<div class="modal">
+    <div class="modal-header"><h3>+ Nova Ordem de Compra</h3><button class="close-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="timeline" style="margin-bottom:20px">
+        <div class="timeline-step done"><div class="step-circle done">1</div><div class="step-label done">Emissão OC</div></div>
+        <div class="timeline-step"><div class="step-circle">2</div><div class="step-label">Receber NF</div></div>
+        <div class="timeline-step"><div class="step-circle">3</div><div class="step-label">Lançar</div></div>
+        <div class="timeline-step"><div class="step-circle">4</div><div class="step-label">Concluído</div></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Número da OC *</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;color:var(--text2);white-space:nowrap;font-weight:500">OC-${ano}-</span>
+            <input type="text" id="f-num" placeholder="001" style="flex:1" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Tipo *</label>
+          <select id="f-tipo">
+            <option value="material">📦 Peça / Material</option>
+            <option value="servico">🔧 Serviço</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Fornecedor *</label><input type="text" id="f-forn" placeholder="Nome do fornecedor"></div>
+        <div class="form-group"><label>Valor Estimado R$ *</label><input type="number" id="f-valor" step="0.01" min="0" placeholder="0,00"></div>
+        <div class="form-group full"><label>Descrição *</label><textarea id="f-desc" placeholder="Detalhe o item ou serviço..."></textarea></div>
+        <div class="form-group"><label>Centro de Custo *</label><input type="text" id="f-cc" placeholder="Ex: CC-MAN-01"></div>
+        <div class="form-group"><label>Solicitante</label><input type="text" id="f-solic" placeholder="Nome do solicitante"></div>
+        <div class="form-group"><label>Entrega Prevista</label><input type="date" id="f-entrega"></div>
+        <div class="form-group full"><label>Observações</label><textarea id="f-obs" style="min-height:60px" placeholder="Informações adicionais..."></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" id="btn-salvar-oc" onclick="salvarOC()">✓ Emitir OC</button>
+    </div>
+  </div>`);
+}
+
+async function salvarOC(){
+  const num=document.getElementById('f-num').value.trim(),
+    forn=document.getElementById('f-forn').value.trim(),
+    desc=document.getElementById('f-desc').value.trim(),
+    valor=parseFloat(document.getElementById('f-valor').value),
+    cc=document.getElementById('f-cc').value.trim();
+  if(!num){toast('⚠️ Informe o número da OC');return;}
+  if(!forn||!desc||!valor||!cc){toast('⚠️ Preencha os campos obrigatórios');return;}
+  const id=`OC-${new Date().getFullYear()}-${num}`;
+  if(ocs.find(o=>o.id===id)){toast(`⚠️ Já existe uma OC com o número ${id}`);return;}
+  const btn=document.getElementById('btn-salvar-oc');
+  btn.disabled=true;btn.textContent='Salvando...';
+  try{
+    await insertOC({id,tipo:document.getElementById('f-tipo').value,fornecedor:forn,descricao:desc,valor,cc,
+      solicitante:document.getElementById('f-solic').value.trim(),status:'aguardando_nf',data_criacao:today(),
+      data_entrega_prev:document.getElementById('f-entrega').value||null,
+      obs:document.getElementById('f-obs').value.trim(),criado_por:currentProfile});
+    closeModal();toast(`✅ ${id} emitida com sucesso!`);
+  }catch(e){toast('❌ Erro: '+e.message);btn.disabled=false;btn.textContent='✓ Emitir OC';}
+}
+
+function fileDropZone(id, label, multiple=false){
+  return `<div style="margin-bottom:4px">
+    <label style="font-size:12px;font-weight:600;color:var(--text2)">${label}</label>
+    <div id="drop-${id}" onclick="document.getElementById('file-${id}').click()"
+      ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+      ondragleave="this.style.borderColor='var(--border2)'"
+      ondrop="handleDrop(event,'${id}')"
+      style="border:2px dashed var(--border2);border-radius:var(--radius);padding:16px 12px;text-align:center;cursor:pointer;transition:border-color .15s;background:var(--surface2);margin-top:5px">
+      <div style="font-size:22px;margin-bottom:4px">📎</div>
+      <div id="lbl-${id}" style="font-size:12px;color:var(--text2)">Clique ou arraste ${multiple?'os arquivos':'o arquivo'} aqui</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">PDF${multiple?' (pode selecionar vários)':''}</div>
+      <input type="file" id="file-${id}" accept=".pdf" ${multiple?'multiple':''} style="display:none" onchange="handleFileInput(this,'${id}')">
+    </div>
+    <div id="lista-${id}" style="margin-top:6px;display:flex;flex-direction:column;gap:4px"></div>
+  </div>`;
+}
+
+function handleDrop(e,id){
+  e.preventDefault();
+  document.getElementById(`drop-${id}`).style.borderColor='var(--border2)';
+  const files=Array.from(e.dataTransfer.files).filter(f=>f.type==='application/pdf');
+  attachFiles(id,files);
+}
+
+function handleFileInput(input,id){
+  attachFiles(id,Array.from(input.files));
+}
+
+window._arquivos={nf:[],boletos:[]};
+
+function attachFiles(id,files){
+  if(!files.length)return;
+  if(id==='nf'){
+    window._arquivos.nf=[files[0]];
+    document.getElementById(`lbl-${id}`).textContent=files[0].name;
+  } else {
+    window._arquivos.boletos.push(...files);
+    renderFileList(id);
+  }
+  document.getElementById(`drop-${id}`).style.borderColor='var(--accent)';
+}
+
+function renderFileList(id){
+  const lista=document.getElementById(`lista-${id}`);
+  if(!lista)return;
+  lista.innerHTML=window._arquivos.boletos.map((f,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;background:var(--blue-light);border-radius:var(--radius);padding:6px 10px;font-size:12px">
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--blue)">📄 ${f.name}</span>
+      <span style="color:var(--text3)">${(f.size/1024).toFixed(0)}KB</span>
+      <span onclick="removeBoleto(${i})" style="cursor:pointer;color:var(--red);font-weight:700;padding:0 4px">✕</span>
+    </div>`).join('');
+  document.getElementById(`lbl-boletos`).textContent=`${window._arquivos.boletos.length} boleto(s) selecionado(s)`;
+}
+
+function removeBoleto(i){
+  window._arquivos.boletos.splice(i,1);
+  renderFileList('boletos');
+  if(!window._arquivos.boletos.length) document.getElementById('lbl-boletos').textContent='Clique ou arraste os arquivos aqui';
+}
+
+async function uploadArquivo(nfId, file, tipo, index=''){
+  const path=`${nfId}/${tipo}${index}.pdf`;
+  const{error}=await sb.storage.from('nf-arquivos').upload(path, file, {upsert:true});
+  if(error)throw error;
+  return path;
+}
+
+async function getUrlArquivo(path){
+  // URL assinada funciona com bucket privado ou público (válida por 1h)
+  const{data,error}=await sb.storage.from('nf-arquivos').createSignedUrl(path,3600);
+  if(error||!data?.signedUrl){
+    const{data:pub}=sb.storage.from('nf-arquivos').getPublicUrl(path);
+    return pub.publicUrl;
+  }
+  return data.signedUrl;
+}
+
+async function excluirArquivosNF(nfId){
+  try{
+    const{data:lista}=await sb.storage.from('nf-arquivos').list(nfId);
+    if(lista&&lista.length){
+      const paths=lista.map(f=>`${nfId}/${f.name}`);
+      await sb.storage.from('nf-arquivos').remove(paths);
+    }
+  }catch(e){console.warn('Erro ao excluir arquivos:',e);}
+}
+
+function openModalNF(ocId){
+  window._arquivos={nf:[],boletos:[]};
+  window._ocsSelecionadas=new Set(ocId?[ocId]:[]);
+  const prof=PROFILES[currentProfile];
+  const aguardando=prof.canCreateNF==='propria'
+    ? ocs.filter(o=>o.status==='aguardando_nf'&&o.criado_por===currentProfile)
+    : ocs.filter(o=>o.status==='aguardando_nf');
+
+  if(!aguardando.length){
+    toast('⚠️ Nenhuma OC aguardando NF no momento');return;
+  }
+
+  openModal(`<div class="modal" style="max-width:700px">
+    <div class="modal-header"><h3>🧾 Vincular Nota Fiscal</h3><button class="close-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="timeline" style="margin-bottom:20px">
+        <div class="timeline-step done"><div class="step-circle done">1</div><div class="step-label done">Emissão OC</div></div>
+        <div class="timeline-step done"><div class="step-circle active">2</div><div class="step-label active">Receber NF</div></div>
+        <div class="timeline-step"><div class="step-circle">3</div><div class="step-label">Lançar</div></div>
+        <div class="timeline-step"><div class="step-circle">4</div><div class="step-label">Concluído</div></div>
+      </div>
+
+      <!-- SELEÇÃO DE OCs -->
+      <div class="form-group full" style="margin-bottom:16px">
+        <label>OCs desta Nota Fiscal * <span style="font-weight:400;color:var(--text3)">(selecione uma ou mais)</span></label>
+        <div id="oc-checklist" style="border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden;margin-top:6px">
+          ${aguardando.map((o,i)=>`
+          <label id="oc-item-${o.id}" onclick="toggleOC('${o.id}')" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;${i<aguardando.length-1?'border-bottom:1px solid var(--border)':''};${ocId===o.id?'background:var(--accent-light)':''}">
+            <div id="oc-chk-${o.id}" style="width:18px;height:18px;border-radius:4px;border:2px solid ${ocId===o.id?'var(--accent)':'var(--border2)'};background:${ocId===o.id?'var(--accent)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s">
+              ${ocId===o.id?'<span style="color:#fff;font-size:12px;font-weight:700">✓</span>':''}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:13px">${o.id} — ${o.fornecedor}</div>
+              <div style="font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.descricao}</div>
+            </div>
+            <div style="font-weight:700;font-size:13px;color:var(--accent);white-space:nowrap">R$ ${fmt(o.valor)}</div>
+          </label>`).join('')}
+        </div>
+        <!-- Totalizador -->
+        <div id="oc-total-bar" style="background:var(--accent);color:#fff;border-radius:0 0 var(--radius) var(--radius);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-top:-1px">
+          <span style="font-size:12px;font-weight:600" id="oc-total-label">Nenhuma OC selecionada</span>
+          <span style="font-size:15px;font-weight:700" id="oc-total-val">R$ 0,00</span>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group"><label>Número da NF *</label><input type="text" id="nf-num" placeholder="000789"></div>
+        <div class="form-group"><label>Emitente</label><input type="text" id="nf-emit" placeholder="Nome do emitente" value="${ocId?ocs.find(o=>o.id===ocId)?.fornecedor||'':''}"></div>
+        <div class="form-group"><label>Valor da NF R$ *</label>
+          <input type="number" id="nf-val" step="0.01" min="0" placeholder="Preenchido automaticamente"
+            style="background:var(--accent-light);font-weight:600;color:var(--accent)"
+            value="${ocId?ocs.find(o=>o.id===ocId)?.valor||'':''}">
+          <span style="font-size:11px;color:var(--text3);margin-top:2px">Ajuste se o valor da NF for diferente da soma das OCs</span>
+        </div>
+        <div class="form-group"><label>Data de Recebimento *</label><input type="date" id="nf-data" value="${today()}"></div>
+        <div class="form-group full">${fileDropZone('nf','📄 PDF da Nota Fiscal (obrigatório)')}</div>
+        <div class="form-group full">${fileDropZone('boletos','🧾 Boleto(s) — pode anexar mais de um',true)}</div>
+      </div>
+      <div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 12px;margin-top:4px;font-size:12px;color:var(--amber)">
+        ⏱ Os arquivos ficam disponíveis para download até o lançamento ser confirmado. Após isso, são excluídos automaticamente.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" id="btn-salvar-nf" onclick="salvarNF()">✓ Vincular NF</button>
+    </div>
+  </div>`);
+  atualizarTotalOCs();
+}
+
+function toggleOC(ocId){
+  if(window._ocsSelecionadas.has(ocId)){
+    window._ocsSelecionadas.delete(ocId);
+  } else {
+    window._ocsSelecionadas.add(ocId);
+  }
+  // Atualiza visual do checkbox
+  for(const id of window._ocsSelecionadas.has(ocId)?[]:window._ocsSelecionadas){
+    // rerender all
+  }
+  // Re-render todos os itens
+  const aguardando=ocs.filter(o=>o.status==='aguardando_nf');
+  aguardando.forEach(o=>{
+    const sel=window._ocsSelecionadas.has(o.id);
+    const item=document.getElementById(`oc-item-${o.id}`);
+    const chk=document.getElementById(`oc-chk-${o.id}`);
+    if(item){item.style.background=sel?'var(--accent-light)':'';}
+    if(chk){
+      chk.style.border=`2px solid ${sel?'var(--accent)':'var(--border2)'}`;
+      chk.style.background=sel?'var(--accent)':'transparent';
+      chk.innerHTML=sel?'<span style="color:#fff;font-size:12px;font-weight:700">✓</span>':'';
+    }
+  });
+  atualizarTotalOCs();
+}
+
+function atualizarTotalOCs(){
+  const selecionadas=Array.from(window._ocsSelecionadas);
+  const total=selecionadas.reduce((s,id)=>{
+    const oc=ocs.find(o=>o.id===id);
+    return s+Number(oc?.valor||0);
+  },0);
+  const label=document.getElementById('oc-total-label');
+  const valEl=document.getElementById('oc-total-val');
+  const valInput=document.getElementById('nf-val');
+  if(label) label.textContent=selecionadas.length?`${selecionadas.length} OC(s) selecionada(s)`:'Nenhuma OC selecionada';
+  if(valEl) valEl.textContent=`R$ ${fmt(total)}`;
+  if(valInput&&selecionadas.length) valInput.value=total.toFixed(2);
+}
+
+async function salvarNF(){
+  const ocIds=Array.from(window._ocsSelecionadas);
+  const numero=document.getElementById('nf-num').value.trim(),
+    valor=parseFloat(document.getElementById('nf-val').value),
+    data=document.getElementById('nf-data').value;
+  if(!ocIds.length){toast('⚠️ Selecione pelo menos uma OC');return;}
+  if(!numero||!valor||!data){toast('⚠️ Preencha os campos obrigatórios');return;}
+  if(!window._arquivos.nf.length){toast('⚠️ Anexe o PDF da Nota Fiscal');return;}
+  const btn=document.getElementById('btn-salvar-nf');
+  btn.disabled=true;btn.textContent='Enviando arquivos...';
+  const nfId=`NF-${Date.now().toString().slice(-7)}`;
+  try{
+    await uploadArquivo(nfId, window._arquivos.nf[0], 'nota');
+    const boletos_paths=[];
+    for(let i=0;i<window._arquivos.boletos.length;i++){
+      const path=await uploadArquivo(nfId, window._arquivos.boletos[i], 'boleto_', i+1);
+      boletos_paths.push(path);
+    }
+    // Salva a NF com referência a todas as OCs
+    await insertNF({
+      id:nfId, numero,
+      emitente:document.getElementById('nf-emit').value.trim(),
+      valor, data_recebimento:data,
+      oc_vinculada:ocIds[0],          // OC principal (compatibilidade)
+      ocs_vinculadas:ocIds,            // todas as OCs
+      status:'aguardando_lancamento',
+      arquivo_nf:`${nfId}/nota.pdf`,
+      arquivos_boletos:boletos_paths,
+    });
+    // Atualiza todas as OCs selecionadas
+    for(const ocId of ocIds){
+      await updateOC(ocId,{status:'nf_recebida',nf_vinculada:nfId});
+    }
+    closeModal();
+    toast(`✅ NF ${numero} vinculada a ${ocIds.length} OC(s)!`);
+  }catch(e){
+    let msg=e.message||'Erro desconhecido';
+    if(msg.includes('schema cache'))msg='Colunas ausentes na tabela nfs. Execute o SQL de migração.';
+    else if(msg.includes('storage'))msg='Erro ao enviar arquivo: '+msg;
+    else if(msg.includes('violates'))msg='Dados duplicados ou inválidos: '+msg;
+    toast('❌ Erro: '+msg);
+    btn.disabled=false;btn.textContent='✓ Vincular NF';
+  }
+}
+
+function openConfirmarLancamento(nfId){
+  const nf=nfs.find(n=>n.id===nfId);
+  const ocsVinc=(nf?.ocs_vinculadas&&nf.ocs_vinculadas.length)?nf.ocs_vinculadas:[nf?.oc_vinculada].filter(Boolean);
+  const temNF=!!nf?.arquivo_nf;
+  const boletos=nf?.arquivos_boletos||[];
+  openModal(`<div class="modal" style="max-width:660px">
+    <div class="modal-header"><h3>✓ Confirmar Lançamento no Sistema</h3><button class="close-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="timeline" style="margin-bottom:20px">
+        <div class="timeline-step done"><div class="step-circle done">1</div><div class="step-label done">Emissão OC</div></div>
+        <div class="timeline-step done"><div class="step-circle done">2</div><div class="step-label done">NF Recebida</div></div>
+        <div class="timeline-step done"><div class="step-circle active">3</div><div class="step-label active">Lançar</div></div>
+        <div class="timeline-step"><div class="step-circle">4</div><div class="step-label">Concluído</div></div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><div style="font-size:11px;color:var(--text3)">NF</div><div style="font-weight:600">nº ${nf?.numero}</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">Valor Total</div><div style="font-weight:700;color:var(--accent)">R$ ${fmt(nf?.valor)}</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">Emitente</div><div>${nf?.emitente||'-'}</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">OCs cobertas</div><div style="font-weight:600">${ocsVinc.length}</div></div>
+      </div>
+      ${ocsVinc.length>1?`<div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">📋 OCs cobertas por esta NF:</div>
+        <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+        ${ocsVinc.map((ocId,i)=>{
+          const o=ocs.find(x=>x.id===ocId);
+          return `<div style="padding:8px 14px;${i<ocsVinc.length-1?'border-bottom:1px solid var(--border)':''};display:flex;justify-content:space-between;align-items:center">
+            <div><span style="font-weight:600;color:var(--blue)">${ocId}</span> <span style="color:var(--text2);font-size:12px">${o?'— '+o.fornecedor:''}</span></div>
+            <span style="font-weight:600;font-size:12px">R$ ${fmt(o?.valor)}</span>
+          </div>`;
+        }).join('')}
+        </div>
+      </div>`:''}
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">📁 Arquivos para baixar antes de confirmar:</div>
+        ${temNF?`<div style="display:flex;align-items:center;gap:8px;background:var(--blue-light);border-radius:var(--radius);padding:8px 12px;margin-bottom:6px">
+          <span style="flex:1;font-size:13px;color:var(--blue);font-weight:500">📄 Nota Fiscal — NF ${nf.numero}</span>
+          <button class="btn xs primary" onclick="baixarArquivo('${nf.arquivo_nf}','NF_${nf.numero}.pdf')">⬇ Baixar</button>
+        </div>`:'<div style="font-size:12px;color:var(--text3)">Nenhum PDF de NF anexado</div>'}
+        ${boletos.map((b,i)=>`<div style="display:flex;align-items:center;gap:8px;background:var(--amber-light);border-radius:var(--radius);padding:8px 12px;margin-bottom:6px">
+          <span style="flex:1;font-size:13px;color:var(--amber);font-weight:500">🧾 Boleto ${i+1}</span>
+          <button class="btn xs" style="background:var(--amber);color:#fff;border-color:var(--amber)" onclick="baixarArquivo('${b}','Boleto_${i+1}_NF${nf.numero}.pdf')">⬇ Baixar</button>
+        </div>`).join('')}
+      </div>
+      <div class="alert amber">⚠️ Confirme apenas APÓS lançar no sistema. Os arquivos serão <strong>excluídos automaticamente</strong> após a confirmação.</div>
+      <div class="form-group" style="margin-top:14px">
+        <label>Seu nome (responsável pelo lançamento) *</label>
+        <input type="text" id="lanc-nome" placeholder="Nome completo">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" id="btn-lancar" onclick="executarLancamento('${nfId}')">✓ Confirmar e Excluir Arquivos</button>
+    </div>
+  </div>`);
+}
+
+async function baixarArquivo(path, nome){
+  try{
+    const url=await getUrlArquivo(path);
+    const a=document.createElement('a');a.href=url;a.download=nome;a.target='_blank';a.click();
+  }catch(e){toast('❌ Erro ao baixar: '+e.message);}
+}
+
+async function executarLancamento(nfId){
+  const nome=document.getElementById('lanc-nome').value.trim();
+  if(!nome){toast('⚠️ Informe seu nome');return;}
+  const nf=nfs.find(n=>n.id===nfId);
+  if(!nf)return;
+  const btn=document.getElementById('btn-lancar');
+  btn.disabled=true;btn.textContent='Processando...';
+  try{
+    await updateNF(nfId,{status:'lancada',data_lancamento:today(),lancado_por:nome,arquivo_nf:null,arquivos_boletos:[]});
+    // Conclui todas as OCs vinculadas
+    const ocsParaConcluir=(nf.ocs_vinculadas&&nf.ocs_vinculadas.length)?nf.ocs_vinculadas:[nf.oc_vinculada].filter(Boolean);
+    for(const ocId of ocsParaConcluir){
+      await updateOC(ocId,{status:'concluido',data_lancamento:today()});
+    }
+    await excluirArquivosNF(nfId);
+    closeModal();toast(`✅ ${ocsParaConcluir.length} OC(s) concluídas! Lançado por ${nome}.`);
+  }catch(e){toast('❌ Erro: '+e.message);btn.disabled=false;btn.textContent='✓ Confirmar e Excluir Arquivos';}
+}
+
+function openDetalhesOC(ocId){
+  const oc=ocs.find(o=>o.id===ocId);if(!oc)return;
+  const nf=oc.nf_vinculada?nfs.find(n=>n.id===oc.nf_vinculada):null;
+  const steps=['aberta','aguardando_nf','nf_recebida','concluido'],labels=['Aberta','Aguard. NF','NF Recebida','Concluído'],cur=steps.indexOf(oc.status);
+  openModal(`<div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <div><h3>${oc.id}</h3><div style="margin-top:4px">${statusBadge(oc.status)}</div></div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="timeline" style="margin-bottom:20px">
+        ${labels.map((l,i)=>`<div class="timeline-step ${i<=cur?'done':''}">
+          <div class="step-circle ${i<cur?'done':i===cur?'active':''}">${i<cur?'✓':i+1}</div>
+          <div class="step-label ${i<=cur?'done':''}">${l}</div>
+        </div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px">
+        ${[['Tipo',`<span class="badge ${oc.tipo==='material'?'blue':'green'}">${oc.tipo==='material'?'📦 Material':'🔧 Serviço'}</span>`],
+          ['Fornecedor',oc.fornecedor||'-'],['Valor',`<strong>R$ ${fmt(oc.valor)}</strong>`],['Centro de Custo',oc.cc||'-'],
+          ['Solicitante',oc.solicitante||'-'],['Criação',oc.data_criacao||'-'],
+          ['Entrega Prevista',oc.data_entrega_prev||'-'],['Criado por',PROFILES[oc.criado_por]?.label||oc.criado_por||'-']]
+          .map(([k,v])=>`<div style="background:var(--surface);padding:10px 14px"><div style="font-size:11px;color:var(--text3);margin-bottom:2px">${k}</div><div style="font-size:13px">${v}</div></div>`).join('')}
+      </div>
+      ${oc.descricao?`<div style="background:var(--surface2);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:3px">Descrição</div>${oc.descricao}</div>`:''}
+      ${oc.obs?`<div style="background:var(--amber-light);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px"><div style="font-size:11px;color:var(--amber);margin-bottom:3px">⚠️ Obs</div><span style="color:var(--amber)">${oc.obs}</span></div>`:''}
+      ${nf?`<div style="background:var(--accent-light);border:1px solid #a8dfc4;border-radius:var(--radius);padding:12px 14px">
+        <div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:8px">🧾 Nota Fiscal</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div><div style="font-size:11px;color:var(--text3)">Nº NF</div><div style="font-weight:600">${nf.numero}</div></div>
+          <div><div style="font-size:11px;color:var(--text3)">Valor</div><div style="font-weight:600">R$ ${fmt(nf.valor)}</div></div>
+          <div><div style="font-size:11px;color:var(--text3)">Status</div>${nfStatusBadge(nf.status)}</div>
+        </div>
+        ${nf.data_lancamento?`<div style="margin-top:8px;font-size:12px;color:var(--accent)">✅ Lançado em ${nf.data_lancamento} por <strong>${nf.lancado_por||'-'}</strong></div>`:''}
+      </div>`:''}
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="gerarPDFOC('${oc.id}');closeModal()">📄 Gerar PDF</button>
+      <button class="btn primary" onclick="closeModal()">Fechar</button>
+    </div>
+  </div>`);
+}
+
+function gerarPDFOC(ocId){
+  const oc=ocs.find(o=>o.id===ocId);if(!oc)return;
+  const nf=oc.nf_vinculada?nfs.find(n=>n.id===oc.nf_vinculada):null;
+  const{jsPDF}=window.jspdf,doc=new jsPDF(),W=210,M=18;let y=20;
+  doc.setFillColor(26,107,74);doc.rect(0,0,W,32,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(18);doc.setFont('helvetica','bold');doc.text('ORDEM DE COMPRA',M,14);
+  doc.setFontSize(10);doc.setFont('helvetica','normal');doc.text('TM Engenharia LTDA',M,22);
+  doc.text(oc.id,W-M,14,{align:'right'});doc.text('Emitido: '+today(),W-M,22,{align:'right'});y=42;
+  const sc={aberta:[26,82,150],aguardando_nf:[179,107,0],nf_recebida:[90,45,140],concluido:[26,107,74]};
+  const sn={aberta:'ABERTA',aguardando_nf:'AGUARDANDO NF',nf_recebida:'NF RECEBIDA',concluido:'CONCLUÍDO'};
+  doc.setFillColor(...(sc[oc.status]||[100,100,100]));doc.roundedRect(M,y,52,8,2,2,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(sn[oc.status]||oc.status,M+26,y+5.5,{align:'center'});y+=14;
+  doc.setTextColor(30,30,30);doc.setFillColor(248,248,245);doc.rect(M,y,W-2*M,52,'F');doc.setDrawColor(220,220,215);doc.setLineWidth(0.3);doc.rect(M,y,W-2*M,52);
+  const f=(l,v,x,fy)=>{doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(120,120,110);doc.text(l.toUpperCase(),x,fy);doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(30,30,30);doc.text(String(v||'-'),x,fy+6);};
+  f('Tipo',oc.tipo==='material'?'Material':'Serviço',M+4,y+10);f('Fornecedor',oc.fornecedor||'-',M+45,y+10);f('Valor Est.','R$ '+fmt(oc.valor),M+130,y+10);
+  f('C. Custo',oc.cc||'-',M+4,y+30);f('Solicitante',oc.solicitante||'-',M+45,y+30);f('Entrega',oc.data_entrega_prev||'-',M+130,y+30);y+=58;
+  doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(80,80,75);doc.text('DESCRIÇÃO',M,y+5);
+  doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(30,30,30);
+  const lines=doc.splitTextToSize(oc.descricao||'-',W-2*M-4);doc.text(lines,M,y+13);y+=14+lines.length*6+6;
+  if(oc.obs){doc.setFillColor(255,244,224);doc.rect(M,y,W-2*M,14,'F');doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(179,107,0);doc.text('OBS:',M+3,y+6);doc.setFont('helvetica','normal');doc.text(oc.obs,M+16,y+6);y+=20;}
+  if(nf){
+    doc.setFillColor(230,244,238);doc.rect(M,y,W-2*M,28,'F');
+    doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(26,107,74);doc.text('NOTA FISCAL VINCULADA',M+4,y+8);
+    f('Nº NF',nf.numero,M+4,y+16);f('Valor NF','R$ '+fmt(nf.valor),M+50,y+16);f('Recebimento',nf.data_recebimento||'-',M+100,y+16);
+    if(nf.data_lancamento){doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(26,107,74);doc.text(`Lançado em ${nf.data_lancamento} por ${nf.lancado_por||'-'}`,M+4,y+26);}
+    y+=34;
+  }
+  doc.setDrawColor(26,107,74);doc.setLineWidth(0.5);doc.line(M,270,W-M,270);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(150,150,140);
+  doc.text('GestãoOC — TM Engenharia LTDA',M,275);doc.text(today(),W-M,275,{align:'right'});
+  doc.line(M,255,M+55,255);doc.line(W-M-55,255,W-M,255);
+  doc.setTextColor(80,80,75);doc.setFontSize(9);doc.text('Responsável',M,260);doc.text('Aprovação',W-M-55,260);
+  doc.save(oc.id+'.pdf');toast('📄 PDF gerado!');
+}
+
+function exportDashboardPDF(){
+  const{jsPDF}=window.jspdf,doc=new jsPDF(),W=210,M=18;let y=20;
+  doc.setFillColor(26,107,74);doc.rect(0,0,W,28,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(15);doc.setFont('helvetica','bold');doc.text('RELATÓRIO DE COMPRAS',M,12);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('TM Engenharia LTDA',M,20);doc.text(today(),W-M,20,{align:'right'});y=36;
+  const stats=[['Total OCs',ocs.length],['Aguard. NF',ocs.filter(o=>o.status==='aguardando_nf').length],['Fila Lanç.',nfs.filter(n=>n.status==='aguardando_lancamento').length],['Concluídas',ocs.filter(o=>o.status==='concluido').length]];
+  const bw=(W-2*M-9)/4;
+  stats.forEach((s,i)=>{const bx=M+i*(bw+3);doc.setFillColor(248,248,245);doc.rect(bx,y,bw,18,'F');doc.setFontSize(14);doc.setFont('helvetica','bold');doc.setTextColor(26,107,74);doc.text(String(s[1]),bx+bw/2,y+10,{align:'center'});doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(120,120,110);doc.text(s[0],bx+bw/2,y+16,{align:'center'});});
+  y+=26;doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);doc.text('Ordens de Compra',M,y);y+=5;
+  doc.setFillColor(26,107,74);doc.rect(M,y,W-2*M,7,'F');doc.setFontSize(8);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);
+  [['OC',0],['Fornecedor',22],['Tipo',82],['Valor',107],['Status',137],['Data',168]].forEach(([l,x])=>doc.text(l,M+x,y+5));y+=8;
+  ocs.forEach((o,i)=>{if(i%2===0){doc.setFillColor(252,252,250);doc.rect(M,y,W-2*M,6,'F');}doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(30,30,30);doc.text(o.id,M,y+4.5);doc.text((o.fornecedor||'-').substring(0,22),M+22,y+4.5);doc.text(o.tipo||'-',M+82,y+4.5);doc.text('R$ '+fmt(o.valor),M+107,y+4.5);doc.text((o.status||'-').replace(/_/g,' '),M+137,y+4.5);doc.text(o.data_criacao||'-',M+168,y+4.5);y+=6;if(y>270){doc.addPage();y=20;}});
+  doc.save('relatorio-oc.pdf');toast('📄 Relatório exportado!');
+}
+
+function exportHistoricoPDF(){
+  const{jsPDF}=window.jspdf,doc=new jsPDF();let y=20;
+  doc.setFontSize(15);doc.setFont('helvetica','bold');doc.text('Histórico de Compras Concluídas',18,y);y+=10;
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('TM Engenharia · '+today(),18,y);y+=10;
+  ocs.filter(o=>o.status==='concluido').forEach(o=>{
+    const nf=o.nf_vinculada?nfs.find(n=>n.id===o.nf_vinculada):null;
+    doc.setFontSize(10);doc.setFont('helvetica','bold');doc.text(`${o.id} — ${o.fornecedor||'-'}`,18,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);
+    doc.text(`${(o.descricao||'-').substring(0,60)} | R$ ${fmt(o.valor)} | NF: ${nf?nf.numero:'-'} | Por: ${nf?.lancado_por||'-'} | ${o.data_lancamento||'-'}`,18,y+6);
+    y+=14;if(y>270){doc.addPage();y=20;}
+  });
+  doc.save('historico.pdf');toast('📄 Histórico exportado!');
+}
+
+function fmt(v){return Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function today(){return new Date().toISOString().slice(0,10);}
+function statusBadge(s){const m={aberta:['blue','🔵 Aberta'],aguardando_nf:['amber','⏳ Aguardando NF'],nf_recebida:['purple','📬 NF Recebida'],concluido:['green','✅ Concluído']};const[c,l]=m[s]||['gray',s];return`<span class="badge ${c}">${l}</span>`;}
+function nfStatusBadge(s){const m={aguardando_lancamento:['amber','⏳ Aguard. Lançamento'],lancada:['green','✅ Lançada']};const[c,l]=m[s]||['gray',s];return`<span class="badge ${c}">${l}</span>`;}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}
+
+// ---- EXCLUIR OC ----
+function confirmarExcluirOC(ocId){
+  const oc=ocs.find(o=>o.id===ocId);if(!oc)return;
+  openModal(`<div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h3>🗑 Excluir Ordem de Compra</h3>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--red-light);border:1px solid #f5c6c1;border-radius:var(--radius);padding:14px 16px;margin-bottom:16px">
+        <div style="font-weight:700;color:var(--red);margin-bottom:4px">⚠️ Atenção! Esta ação não pode ser desfeita.</div>
+        <div style="font-size:13px;color:var(--red)">A OC e todos os seus dados serão removidos permanentemente.</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:var(--radius);padding:12px 14px;font-size:13px">
+        <div style="font-weight:700;margin-bottom:4px">${oc.id}</div>
+        <div style="color:var(--text2)">${oc.fornecedor||'-'} · R$ ${fmt(oc.valor)}</div>
+        <div style="color:var(--text3);font-size:12px;margin-top:3px">${oc.descricao||''}</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn" style="background:var(--red);color:#fff;border-color:var(--red)" id="btn-excluir-oc" onclick="excluirOC(this.dataset.id)" data-id="${oc.id}">🗑 Confirmar Exclusão</button>
+    </div>
+  </div>`);
+}
+
+async function excluirOC(ocId){
+  const btn=document.getElementById('btn-excluir-oc');
+  btn.disabled=true;btn.textContent='Excluindo...';
+  try{
+    const{error}=await sb.from('ocs').delete().eq('id',ocId);
+    if(error)throw error;
+    await loadAll();
+    closeModal();
+    toast(`🗑 OC ${ocId} excluída com sucesso.`);
+  }catch(e){
+    toast('❌ Erro ao excluir: '+e.message);
+    btn.disabled=false;btn.textContent='🗑 Confirmar Exclusão';
+  }
+}
+
+// ---- ONBOARDING COM BALÕES ----
+const ONBOARDING_STEPS=[
+  {
+    target:'sidebar-nav',
+    titulo:'👋 Bem-vindo ao GestãoOC!',
+    texto:'Este é o menu de navegação. Cada seção tem uma função específica no fluxo de compras.',
+    pos:'right',
+  },
+  {
+    target:'profileSelect',
+    titulo:'👤 Selecione seu perfil',
+    texto:'Escolha o perfil correto antes de usar o sistema. Cada perfil tem permissões diferentes: Gestor, Compras, Analista ou Almoxarifado.',
+    pos:'right',
+  },
+  {
+    target:'page-dashboard',
+    titulo:'📊 Dashboard',
+    texto:'Aqui você tem a visão geral em tempo real: total de OCs, fila de lançamento, alertas de risco e gráficos.',
+    pos:'center',
+  },
+  {
+    target:'page-dashboard',
+    titulo:'📋 Fluxo do sistema',
+    texto:'O processo segue 4 etapas: 1️⃣ Emitir OC → 2️⃣ Vincular NF → 3️⃣ Lançar no sistema → 4️⃣ Concluído. Sempre nessa ordem!',
+    pos:'center',
+  },
+  {
+    target:'page-dashboard',
+    titulo:'🔴 Semáforo de risco',
+    texto:'O sistema monitora automaticamente os prazos: 🟢 OK = menos de 4 dias 🟡 Atenção = 4 a 6 dias 🔴 Crítico = 7 dias ou mais sem lançamento.',
+    pos:'center',
+  },
+  {
+    target:'sidebar-nav',
+    titulo:'✅ Pronto para começar!',
+    texto:'Você pode rever este tutorial a qualquer momento clicando em "❓ Como usar o sistema" no rodapé do menu.',
+    pos:'right',
+  },
+];
+
+let _obStep=0;
+let _obOverlay=null;
+
+function openOnboarding(){
+  _obStep=0;
+  renderOnboarding();
+}
+
+function renderOnboarding(){
+  // Remove overlay anterior
+  if(_obOverlay){_obOverlay.remove();_obOverlay=null;}
+
+  const s=ONBOARDING_STEPS[_obStep];
+  const total=ONBOARDING_STEPS.length;
+
+  // Fundo escurecido
+  const overlay=document.createElement('div');
+  overlay.id='ob-overlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:8000;pointer-events:none;';
+  _obOverlay=overlay;
+
+  // Balão
+  const balao=document.createElement('div');
+  balao.style.cssText=`
+    position:fixed;z-index:8001;pointer-events:all;
+    background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.22);
+    padding:20px 22px;max-width:320px;min-width:260px;
+    border:2px solid var(--accent);
+    animation: obPop .25s cubic-bezier(.34,1.56,.64,1);
+  `;
+
+  // Posição do balão
+  const target=document.getElementById(s.target);
+  let top,left,arrowDir='none';
+  if(s.pos==='right'&&target){
+    const r=target.getBoundingClientRect();
+    top=Math.max(80, r.top + (r.height/2) - 80);
+    left=r.right+18;
+    arrowDir='left';
+    // Se sair da tela, centraliza
+    if(left+330>window.innerWidth){left=window.innerWidth/2-160;arrowDir='none';}
+  } else {
+    top=window.innerHeight/2-120;
+    left=window.innerWidth/2-160;
+    arrowDir='none';
+  }
+  balao.style.top=top+'px';
+  balao.style.left=left+'px';
+
+  // Seta lateral
+  const seta=arrowDir==='left'?`<div style="position:absolute;left:-11px;top:32px;width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-right:11px solid var(--accent)"></div><div style="position:absolute;left:-8px;top:33px;width:0;height:0;border-top:9px solid transparent;border-bottom:9px solid transparent;border-right:10px solid #fff"></div>`:'';
+
+  // Dots
+  const dots=Array.from({length:total},(_,i)=>`<span style="width:7px;height:7px;border-radius:50%;background:${i===_obStep?'var(--accent)':'var(--border2)'};display:inline-block;margin:0 2px"></span>`).join('');
+
+  // Formata texto com quebras de linha
+  const textoHtml=s.texto;
+
+  balao.innerHTML=`
+    ${seta}
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">
+      <div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.3">${s.titulo}</div>
+      <button onclick="fecharOnboarding()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);padding:0;line-height:1;flex-shrink:0">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:16px">${textoHtml}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:4px">${dots}<span style="font-size:11px;color:var(--text3);margin-left:6px">${_obStep+1}/${total}</span></div>
+      <div style="display:flex;gap:6px">
+        ${_obStep>0?`<button onclick="obAnterior()" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);font-size:12px;cursor:pointer;font-weight:500">← Voltar</button>`:''}
+        ${_obStep<total-1
+          ?`<button onclick="obProximo()" style="padding:6px 14px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer;font-weight:600">Próximo →</button>`
+          :`<button onclick="fecharOnboarding()" style="padding:6px 14px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer;font-weight:600">✅ Começar!</button>`}
+      </div>
+    </div>
+  `;
+
+  // Destaque no elemento alvo
+  let highlightEl=null;
+  if(target&&s.pos==='right'){
+    const clone=document.createElement('div');
+    const r=target.getBoundingClientRect();
+    clone.style.cssText=`position:fixed;top:${r.top-4}px;left:${r.left-4}px;width:${r.width+8}px;height:${r.height+8}px;border-radius:10px;box-shadow:0 0 0 4px var(--accent),0 0 0 9999px rgba(0,0,0,0.35);z-index:7999;pointer-events:none;transition:all .3s`;
+    overlay.appendChild(clone);
+    highlightEl=clone;
+  } else {
+    // Sem highlight específico, só escurece fundo
+    const bg=document.createElement('div');
+    bg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:7999;pointer-events:none';
+    overlay.appendChild(bg);
+  }
+
+  overlay.appendChild(balao);
+  document.body.appendChild(overlay);
+
+  // Adiciona animação CSS se não existir
+  if(!document.getElementById('ob-style')){
+    const st=document.createElement('style');
+    st.id='ob-style';
+    st.textContent=`@keyframes obPop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}`;
+    document.head.appendChild(st);
+  }
+}
+
+function obProximo(){
+  _obStep=Math.min(_obStep+1,ONBOARDING_STEPS.length-1);
+  renderOnboarding();
+}
+function obAnterior(){
+  _obStep=Math.max(_obStep-1,0);
+  renderOnboarding();
+}
+function fecharOnboarding(){
+  if(_obOverlay){_obOverlay.remove();_obOverlay=null;}
+  localStorage.setItem('oc_tutorial_visto','1');
+}
+
+// ---- TUTORIAL INTERATIVO ----
+const TUTORIAL_STEPS = [
+  {
+    perfil: null,
+    icon: '👋',
+    titulo: 'Bem-vindo ao GestãoOC',
+    desc: 'Este sistema gerencia o fluxo completo de Ordens de Compra e Notas Fiscais da TM Engenharia. O processo segue sempre 4 etapas simples.',
+    detalhe: `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px">
+      ${[['1','Emitir OC','Compras ou Analista cria a Ordem de Compra','var(--blue)'],['2','Receber NF','Vincula a Nota Fiscal à OC e anexa os PDFs','var(--purple)'],['3','Lançar','Almoxarifado baixa os arquivos e confirma o lançamento no sistema','var(--amber)'],['4','Concluído','Processo finalizado e arquivado no Histórico','var(--accent)']].map(([n,t,d,c])=>`
+      <div style="background:var(--surface2);border-radius:var(--radius);padding:10px;text-align:center;border-top:3px solid ${c}">
+        <div style="font-size:20px;font-weight:800;color:${c};margin-bottom:4px">${n}</div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:4px">${t}</div>
+        <div style="font-size:11px;color:var(--text3)">${d}</div>
+      </div>`).join('')}
+    </div>`,
+  },
+  {
+    perfil: 'compras',
+    icon: '🛒',
+    titulo: 'Perfil: Compras (Material)',
+    desc: 'Responsável por emitir OCs de <strong>Peças e Materiais</strong> e depois vincular a Nota Fiscal quando o material chegar.',
+    detalhe: `<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+      <div style="background:var(--blue-light);border-radius:var(--radius);padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px">📋</span>
+        <div><div style="font-weight:600;font-size:13px">1. Emitir uma OC</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Vá em <strong>Ordens de Compra → + Nova OC</strong>. Preencha fornecedor, descrição, valor e centro de custo. A OC entra com status <em>"Aguardando NF"</em>.</div></div>
+      </div>
+      <div style="background:var(--purple-light);border-radius:var(--radius);padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px">🧾</span>
+        <div><div style="font-weight:600;font-size:13px">2. Vincular a Nota Fiscal</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Quando receber a NF, clique em <strong>+NF</strong> na linha da OC (ou em <strong>Notas Fiscais → + Vincular NF</strong>). Anexe o <strong>PDF da NF</strong> e os <strong>boletos</strong>.</div></div>
+      </div>
+      <div style="background:var(--accent-light);border-radius:var(--radius);padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px">✅</span>
+        <div><div style="font-weight:600;font-size:13px">3. Aguardar o lançamento</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Após vincular, o Almoxarifado/Financeiro entra na <strong>Fila de Lançamento</strong>, baixa os arquivos e confirma. O processo vai para <em>Concluído</em>.</div></div>
+      </div>
+    </div>`,
+  },
+  {
+    perfil: 'analista',
+    icon: '📝',
+    titulo: 'Perfil: Analista OC Serviço',
+    desc: 'Responsável por emitir OCs de <strong>Serviços</strong> e vincular a Nota Fiscal quando o serviço for concluído.',
+    detalhe: `<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+      <div style="background:var(--blue-light);border-radius:var(--radius);padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px">📋</span>
+        <div><div style="font-weight:600;font-size:13px">1. Emitir OC de Serviço</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Vá em <strong>Ordens de Compra → + Nova OC</strong>, selecione tipo <em>"Serviço"</em>. Informe o fornecedor (prestador), descrição do serviço e valor.</div></div>
+      </div>
+      <div style="background:var(--purple-light);border-radius:var(--radius);padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px">🧾</span>
+        <div><div style="font-weight:600;font-size:13px">2. Vincular NF do serviço</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Após a conclusão do serviço e recebimento da nota, clique em <strong>+NF</strong> na OC correspondente. Anexe o PDF da NF e boleto se houver.</div></div>
+      </div>
+      <div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px">⏱</span>
+        <div><div style="font-weight:600;font-size:13px">Atenção aos prazos</div><div style="font-size:12px;color:var(--text2);margin-top:2px">O sistema alerta automaticamente quando uma NF está há <strong>4+ dias</strong> (atenção) ou <strong>7+ dias</strong> (crítico) sem ser lançada. Acompanhe o semáforo de risco.</div></div>
+      </div>
+    </div>`,
+  },
+  {
+    perfil: 'almoxarifado',
+    icon: '📦',
+    titulo: 'Perfil: Almoxarifado / Financeiro',
+    desc: 'Responsável por baixar os documentos e confirmar o lançamento das NFs no sistema de gestão.',
+    detalhe: `<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+      <div style="background:var(--amber-light);border-radius:var(--radius);padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px">⚡</span>
+        <div><div style="font-weight:600;font-size:13px">1. Acessar a Fila de Lançamento</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Vá em <strong>Fila Lançamento</strong> no menu. As NFs aparecem ordenadas da mais antiga para a mais nova. Lance sempre de cima pra baixo.</div></div>
+      </div>
+      <div style="background:var(--blue-light);border-radius:var(--radius);padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px">⬇️</span>
+        <div><div style="font-weight:600;font-size:13px">2. Baixar os arquivos</div><div style="font-size:12px;color:var(--text2);margin-top:2px">No card da NF, clique em <strong>📄 Baixar NF</strong> e <strong>🧾 Baixar Boleto</strong>. Abra os arquivos e faça o lançamento no seu sistema de gestão (ERP, etc).</div></div>
+      </div>
+      <div style="background:var(--accent-light);border-radius:var(--radius);padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px">✅</span>
+        <div><div style="font-weight:600;font-size:13px">3. Confirmar e finalizar</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Clique em <strong>✓ Confirmar Lançamento</strong>, informe seu nome. Os arquivos serão <strong>excluídos automaticamente</strong> e o processo vai para Concluído.</div></div>
+      </div>
+      <div style="background:var(--red-light);border-radius:var(--radius);padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px">🔴</span>
+        <div><div style="font-weight:600;font-size:13px">Semáforo de risco</div><div style="font-size:12px;color:var(--text2);margin-top:2px"><strong>🟢 OK</strong> = menos de 4 dias · <strong>🟡 Atenção</strong> = 4 a 6 dias · <strong>🔴 Crítico</strong> = 7 dias ou mais sem lançamento.</div></div>
+      </div>
+    </div>`,
+  },
+  {
+    perfil: 'gestor',
+    icon: '👔',
+    titulo: 'Perfil: Gestor',
+    desc: 'Visão completa do sistema. Acompanha todos os processos, analisa indicadores e exporta relatórios.',
+    detalhe: `<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+      <div style="background:var(--blue-light);border-radius:var(--radius);padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px">📊</span>
+        <div><div style="font-weight:600;font-size:13px">Dashboard</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Visão geral com totais, funil por status, comparativo Material vs Serviço e alertas de risco em tempo real. Exporte o relatório em PDF.</div></div>
+      </div>
+      <div style="background:var(--accent-light);border-radius:var(--radius);padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px">⚠️</span>
+        <div><div style="font-weight:600;font-size:13px">Painel de Risco</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Exibido no topo de <strong>Ordens de Compra</strong>. Mostra NFs e OCs em situação crítica ou de atenção para facilitar o acompanhamento.</div></div>
+      </div>
+      <div style="background:var(--purple-light);border-radius:var(--radius);padding:10px 14px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px">📁</span>
+        <div><div style="font-weight:600;font-size:13px">Histórico</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Consulte todos os processos concluídos com data de lançamento e responsável. Exporte o histórico em PDF a qualquer momento.</div></div>
+      </div>
+    </div>`,
+  },
+];
+
+function openTutorial(){
+  window._tutStep=0;
+  renderTutorial();
+}
+
+function renderTutorial(){
+  const steps=TUTORIAL_STEPS;
+  const i=window._tutStep||0;
+  const s=steps[i];
+  // Dots de navegação
+  const dots=steps.map((_,idx)=>`<span onclick="window._tutStep=${idx};renderTutorial()" style="width:8px;height:8px;border-radius:50%;background:${idx===i?'var(--accent)':'var(--border2)'};cursor:pointer;display:inline-block;transition:background .2s"></span>`).join('');
+  openModal(`<div class="modal" style="max-width:600px">
+    <div class="modal-header" style="background:var(--accent);color:#fff;border-radius:var(--radius-lg) var(--radius-lg) 0 0">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:24px">${s.icon}</span>
+        <div>
+          <div style="font-size:11px;opacity:.75;font-weight:500;margin-bottom:2px">PASSO ${i+1} DE ${steps.length}</div>
+          <h3 style="color:#fff;font-size:16px">${s.titulo}</h3>
+        </div>
+      </div>
+      <button class="close-btn" onclick="closeModal()" style="color:#fff;opacity:.7">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+      <p style="color:var(--text2);font-size:13px;line-height:1.6;margin-bottom:4px">${s.desc}</p>
+      ${s.detalhe}
+    </div>
+    <div class="modal-footer" style="justify-content:space-between;align-items:center">
+      <div style="display:flex;gap:5px;align-items:center">${dots}</div>
+      <div style="display:flex;gap:8px">
+        ${i>0?`<button class="btn" onclick="window._tutStep=${i-1};renderTutorial()">← Anterior</button>`:'<span></span>'}
+        ${i<steps.length-1
+          ?`<button class="btn primary" onclick="window._tutStep=${i+1};renderTutorial()">Próximo →</button>`
+          :`<button class="btn primary" onclick="closeModal()">✅ Entendido!</button>`}
+      </div>
+    </div>
+  </div>`);
+}
+
+// Verifica se as colunas arquivo_nf e arquivos_boletos existem na tabela nfs
+async function verificarColunas(){
+  try{
+    // Tenta fazer um select das colunas; se falhar, as colunas não existem
+    const{error}=await sb.from('nfs').select('arquivo_nf,arquivos_boletos').limit(1);
+    if(error&&error.message&&error.message.includes('schema cache')){
+      window._colunasArquivoAusentes=true;
+      mostrarAvisoColunas();
+    } else {
+      window._colunasArquivoAusentes=false;
+    }
+  }catch(e){
+    // Ignora erros de verificação
+    console.warn('Verificação de colunas falhou:',e);
+  }
+}
+
+async function init(){
+  try{
+    await loadAll();
+    await verificarColunas();
+    setupRealtime();
+    document.getElementById('loading-screen').classList.add('hide');
+    setTimeout(()=>{
+      document.getElementById('loading-screen').style.display='none';
+      document.getElementById('app').style.display='flex';
+      // Mostra tutorial com balão na primeira visita
+      const jaViu=localStorage.getItem('oc_tutorial_visto');
+      if(!jaViu){ setTimeout(()=>openOnboarding(),600); }
+    },400);
+    buildNav();renderPage('dashboard');
+  }catch(e){
+    document.querySelector('.loading-text').textContent='Erro ao conectar. Verifique a conexão.';
+    document.querySelector('.loading-text').style.color='#ff6b6b';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
